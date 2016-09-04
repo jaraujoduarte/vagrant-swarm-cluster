@@ -1,4 +1,4 @@
-FROM ruby:2.1
+FROM ruby:slim
 
 ENV DEPLOY_FOLDER /deploy/app
 
