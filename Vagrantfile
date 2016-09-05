@@ -1,23 +1,34 @@
 $swarm_manager_ip = "10.0.0.2"
 $swarm_manager_hostname = "manager"
 $docker_registry = "manager"
+$overlay_network = "my-cluster-network"
 
 # Script automatically enter swarm mode on the manager and makes the token available
 $swarm_init_script = <<SCRIPT
 docker swarm init --advertise-addr #{$swarm_manager_ip}
 docker swarm join-token worker -q > /vagrant/swarm.token
-docker network create --driver overlay --subnet 10.0.9.0/24 --opt encrypted my-cluster-net
+docker network create --driver overlay --subnet 10.0.9.0/24 --opt encrypted #{$overlay_network}
+SCRIPT
+
+# Useful to test the swarm provided DNS
+$pull_start_busybox = <<SCRIPT
+docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-busybox busybox sleep 3000
+SCRIPT
+
+# Pull redis image and start the backend container
+$pull_start_redis = <<SCRIPT
+docker pull redis:alpine
+docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-redis redis:alpine
 SCRIPT
 
 # Build and push in advance so it's accesible via the registry on the manager node
 $build_push_app = <<SCRIPT
-# Build docker image for the ruby app and publish to registry
-docker build -t my-app:latest /vagrant/app/
-docker tag my-app:latest #{$docker_registry}:5000/my-app:latest
-docker push #{$docker_registry}:5000/my-app:latest
+docker build -t my-app:1.0 /vagrant/app/
+docker tag my-app:1.0 #{$docker_registry}:5000/my-app:1.0
+docker push #{$docker_registry}:5000/my-app:1.0
 SCRIPT
 
-# Script to access to registry -- Registry needed to be able to use docker-compose/swarm for scaling
+# Access to insecure registry
 $insecure_registry_opt = <<-SCRIPT
 if ! grep -q "insecure-registry" /etc/default/docker; then
     echo 'DOCKER_OPTS="--insecure-registry #{$docker_registry}:5000"' >> /etc/default/docker
@@ -39,8 +50,9 @@ def build_swarm_join_string()
 end
 
 Vagrant.configure("2") do |config|
-	config.vm.box = "phusion/ubuntu-14.04-amd64"
+	config.vm.box = "ubuntu/trusty64"
 	config.vm.box_check_update = false
+	config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
 
 	config.vm.define "manager" do |manager|
 	    manager.vm.hostname = "manager"
@@ -54,6 +66,8 @@ Vagrant.configure("2") do |config|
 		manager.vm.provision "shell", inline: $insecure_registry_opt
 		manager.vm.provision "shell", inline: $swarm_init_script
 		manager.vm.provision "shell", inline: $build_push_app
+		manager.vm.provision "shell", inline: $pull_start_redis
+		manager.vm.provision "shell", inline: $pull_start_busybox
 	end
 
 	config.vm.define "node_1" do |node_1|
