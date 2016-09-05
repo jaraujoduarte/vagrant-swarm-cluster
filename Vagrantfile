@@ -18,13 +18,13 @@ docker service create --constraint "node.role==manager" --replicas 1 --network #
 SCRIPT
 
 $create_proxy_service = <<SCRIPT
-docker service create --constraint 'node.role==manager' --replicas 1 --network my-cluster-network \
+docker service create --constraint 'node.role==manager' --replicas 1 --network #{$overlay_network} \
 --mount type=bind,dst=/etc/nginx/conf.d/default.conf,src=/vagrant/proxy/default.conf -p #{$proxy_port}:80 --name my-proxy nginx
 SCRIPT
 
 # Pull redis image and start the backend container
 $create_redis_service = <<SCRIPT
-docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-redis redis:alpine
+docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-redis redis:3.0
 SCRIPT
 
 # Build and push in advance so it's accesible via the registry on the manager node
