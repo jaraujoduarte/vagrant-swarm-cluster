@@ -1,9 +1,0 @@
-version: '2'
-
-services:
-  my-nginx:
-    image: manager:5000/test-app:latest
-      ports:
-       - "80:80"
-      networks:
-        - my-cluster-net
