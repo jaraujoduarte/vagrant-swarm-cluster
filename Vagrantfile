@@ -2,6 +2,8 @@ $swarm_manager_ip = "10.0.0.2"
 $swarm_manager_hostname = "manager"
 $docker_registry = "manager"
 $overlay_network = "my-cluster-network"
+$proxy_port = "9999"
+$host_port = "9999"
 
 # Script automatically enter swarm mode on the manager and makes the token available
 $swarm_init_script = <<SCRIPT
@@ -11,13 +13,17 @@ docker network create --driver overlay --subnet 10.0.9.0/24 --opt encrypted #{$o
 SCRIPT
 
 # Useful to test the swarm provided DNS
-$pull_start_busybox = <<SCRIPT
+$create_busybox_service = <<SCRIPT
 docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-busybox busybox sleep 3000
 SCRIPT
 
+$create_proxy_service = <<SCRIPT
+docker service create --constraint 'node.role==manager' --replicas 1 --network my-cluster-network \
+--mount type=bind,dst=/etc/nginx/conf.d/default.conf,src=/vagrant/proxy/default.conf -p #{$proxy_port}:80 --name my-proxy nginx
+SCRIPT
+
 # Pull redis image and start the backend container
-$pull_start_redis = <<SCRIPT
-docker pull redis:alpine
+$create_redis_service = <<SCRIPT
 docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-redis redis:alpine
 SCRIPT
 
@@ -57,6 +63,7 @@ Vagrant.configure("2") do |config|
 	config.vm.define "manager" do |manager|
 	    manager.vm.hostname = "manager"
 		manager.vm.network "private_network", ip: $swarm_manager_ip, virtualbox__intnet: true
+		manager.vm.network "forwarded_port", guest: $proxy_port, host: $host_port
 
 		manager.vm.provision "docker" do |d|
 			d.pull_images "registry:2"
@@ -66,8 +73,9 @@ Vagrant.configure("2") do |config|
 		manager.vm.provision "shell", inline: $insecure_registry_opt
 		manager.vm.provision "shell", inline: $swarm_init_script
 		manager.vm.provision "shell", inline: $build_push_app
-		manager.vm.provision "shell", inline: $pull_start_redis
-		manager.vm.provision "shell", inline: $pull_start_busybox
+		manager.vm.provision "shell", inline: $create_redis_service
+		manager.vm.provision "shell", inline: $create_proxy_service
+		manager.vm.provision "shell", inline: $create_busybox_service
 	end
 
 	config.vm.define "node_1" do |node_1|
