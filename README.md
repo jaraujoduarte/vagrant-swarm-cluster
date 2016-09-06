@@ -27,6 +27,8 @@ From the root folder you will be able to run the following commands (from git ba
 
 Creates and provisions VMs, and makes the first deployment of the my-app service (with 2 replicas). NOTE: If running on Windows, please keep an eye on messages poping up to request permissions for Virtualbox. If it hangs due to an unattended popup please either destroy the cluster or run "vagrant reload node_name[manager|node_1|node_2] --provision".
 
+The script should finish after 8-10 minutes dependending on your internet connectin. After the script finishes, wait around 20 seconds and then access http://localhost:9999/hello
+
 ```
 ./cluster_up.sh
 ```
