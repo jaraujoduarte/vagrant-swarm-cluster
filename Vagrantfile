@@ -25,6 +25,7 @@ SCRIPT
 # Pull redis image and start the backend container
 $create_redis_service = <<SCRIPT
 docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-redis redis:3.0
+docker service inspect -f '{{(index .Endpoint.VirtualIPs 0).Addr}}' my-redis | cut -d'/' -f 1 > /vagrant/virtual_ip_redis.output
 SCRIPT
 
 # Build and push in advance so it's accesible via the registry on the manager node

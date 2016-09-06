@@ -1,2 +1,3 @@
 .vagrant
 swarm.token
+*.output
