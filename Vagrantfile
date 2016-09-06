@@ -5,7 +5,7 @@ $overlay_network = "my-cluster-network"
 $proxy_port = "9999"
 $host_port = "9999"
 
-# Script automatically enter swarm mode on the manager and makes the token available
+# Enter swarm mode on the manager and makes the token available
 $swarm_init_script = <<SCRIPT
 docker swarm init --advertise-addr #{$swarm_manager_ip}
 docker swarm join-token worker -q > /vagrant/swarm.token
@@ -17,18 +17,19 @@ $create_busybox_service = <<SCRIPT
 docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-busybox busybox sleep 3000
 SCRIPT
 
+# Bring up proxy
 $create_proxy_service = <<SCRIPT
 docker service create --constraint 'node.role==manager' --replicas 1 --network #{$overlay_network} \
 --mount type=bind,dst=/etc/nginx/conf.d/default.conf,src=/vagrant/proxy/default.conf -p #{$proxy_port}:80 --name my-proxy nginx
 SCRIPT
 
-# Pull redis image and start the backend container
+# Bring up redis backend
 $create_redis_service = <<SCRIPT
 docker service create --constraint "node.role==manager" --replicas 1 --network #{$overlay_network} --name my-redis redis:3.0
 docker service inspect -f '{{(index .Endpoint.VirtualIPs 0).Addr}}' my-redis | cut -d'/' -f 1 > /vagrant/virtual_ip_redis.output
 SCRIPT
 
-# Build and push in advance so it's accesible via the registry on the manager node
+# Build and push my-app image in advance so it's accesible via the registry on the manager node
 $build_push_app = <<SCRIPT
 docker build -t my-app:1.0 /vagrant/app/
 docker tag my-app:1.0 #{$docker_registry}:5000/my-app:1.0
@@ -43,7 +44,7 @@ if ! grep -q "insecure-registry" /etc/default/docker; then
 fi
 SCRIPT
 
-# Add manager as known hostname
+# Add manager as known hostname to make access to the registry easier
 $manager_hostname = <<-SCRIPT
 if ! grep -q "#{$swarm_manager_ip} manager" /etc/hosts; then
     echo '#{$swarm_manager_ip} manager' >> /etc/hosts
