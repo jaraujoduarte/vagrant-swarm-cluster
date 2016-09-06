@@ -27,30 +27,30 @@ From the root folder you will be able to run the following commands (from git ba
 
 Creates and provisions VMs, and makes the first deployment of the my-app service (with 2 replicas). NOTE: If running on Windows, please keep an eye on messages poping up to request permissions for Virtualbox. If it hangs due to an unattended popup please either destroy the cluster or run "vagrant reload node_name[manager|node_1|node_2] --provision".
 
----
+```
 ./cluster_up.sh
----
+```
 
 ### Scale application
 
 Scales the amount of tasks for the my-app service
 
----
+```
 ./app_scale.sh number_of_replicas
----
+```
 
 ### Application status
 
 Shows on which nodes is the application currently replicated
 
----
+```
 ./app_status.sh
----
+```
 
 ### Destroy infrastructure
 
 Shuts down VMs and removes its data.
 
----
+```
 ./cluster_destroy.sh
----
+```
